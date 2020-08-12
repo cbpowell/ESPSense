@@ -8,6 +8,8 @@ Similar to my [SenseLink](https://github.com/cbpowell/SenseLink) project, ESPSen
 # Usage
 Place the `espsense.h` [custom component](https://esphome.io/custom/custom_component.html) in your ESPHome build directory, and add the `custom_component` details and lambda to your YAML as per the ESPHome directions - from the included example YAML file:
 
+**BUG:** As of right now, ESPSense inadvertently depends on having the `web_server` key in your YAML in order to have the right ArduinoJson dependency included. This will be corrected soon, but for now include the `web_server` key!
+
 ```yaml
 esphome:
   name: espsense
@@ -18,6 +20,10 @@ esphome:
   # Uses the ESPAsyncUDP library
   libraries:
     - "ESPAsyncUDP"
+
+# Web server, include due to present bug (oops)
+web_server:
+  port: 80
 
 # Template sensor as an example
 sensor:
