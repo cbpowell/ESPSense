@@ -12,13 +12,7 @@ public:
   
   float watts_on = 0;
   float watts_off = 0;
-  float voltage = 1;
   
-  std::string base_json = "{\"emeter\": {\"get_realtime\":{ "
-                              "\"current\": %.02f, \"voltage\": %.02f, \"power\": %.02f, \"total\": 0, \"err_code\": 0}}, "
-                           "\"system\": {\"get_sysinfo\": "
-                              "{\"err_code\": 0, \"hw_ver\": 1.0, \"type\": \"IOT.SMARTPLUGSWITCH\", \"model\": \"HS110(US)\", "
-                           "\"mac\": \"%s\", \"deviceId\": \"%s\", \"alias\": \"%s\", \"relay_state\": 1, \"updating\": 0 }}}";
   
   ESPSense(Sensor *sid, float voltage) : Component() {
     voltage = voltage;
@@ -43,7 +37,14 @@ public:
   }
   
 private:
+  float voltage;
   char response_buf[RES_SIZE];
+  std::string base_json = "{\"emeter\": {\"get_realtime\":{ "
+                              "\"current\": %.02f, \"voltage\": %.02f, \"power\": %.02f, \"total\": 0, \"err_code\": 0}}, "
+                           "\"system\": {\"get_sysinfo\": "
+                              "{\"err_code\": 0, \"hw_ver\": 1.0, \"type\": \"IOT.SMARTPLUGSWITCH\", \"model\": \"HS110(US)\", "
+                           "\"mac\": \"%s\", \"deviceId\": \"%s\", \"alias\": \"%s\", \"relay_state\": 1, \"updating\": 0 }}}";
+  
   
   void start_sense_response() {
     udp.onPacket([&](AsyncUDPPacket &packet) {parse_packet(packet);});
