@@ -8,22 +8,12 @@ class ESPSense : public Component {
 public:
   AsyncUDP udp;
   Sensor* sensor_id = NULL;
-  Switch* switch_id = NULL;
-  
-  float watts_on = 0;
-  float watts_off = 0;
-  
   
   ESPSense(Sensor *sid, float voltage) : Component() {
     voltage = voltage;
     sensor_id = sid;
   }
   
-  ESPSense(Switch *sid, float voltage, float watts_on, float watts_off) : Component() {
-    switch_id = sid;
-    voltage = voltage;
-    watts_on = watts_on;
-    watts_off = watts_off;
   }
 
   void setup() override {
@@ -98,18 +88,13 @@ private:
   }
   
   float get_power() {
+    float state;
     if(sensor_id && id(sensor_id).has_state()) {
-      float state = state = id(sensor_id).state;
-      return state;
-    } else if (switch_id) {
-      if(id(switch_id).state) {
-        return watts_on;
-      } else {
-        return watts_off;
-      }
+      state = id(sensor_id).state;
     } else {
-      return 0.0;
+      state = 0.0;
     }
+    return state;
   }
   
   int generate_response(char* data, float power) {
