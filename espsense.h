@@ -12,12 +12,14 @@ public:
   ESPSense(Sensor *sid, float conf_voltage = 120.0) : Component() {
     voltage = conf_voltage;
     sensor_id = sid;
+    name = App.get_name();
     mac = get_mac_address_pretty();
   }
   
-  ESPSense(Sensor *sid, std::string config_mac, float conf_voltage = 120.0) : Component() {
+  ESPSense(Sensor *sid, std::string config_mac, std::string config_alias, float conf_voltage = 120.0) : Component() {
     voltage = conf_voltage;
     sensor_id = sid;
+    name = config_alias;
     mac = config_mac;
   }
   
@@ -34,7 +36,7 @@ public:
 private:
   float voltage;
   char response_buf[RES_SIZE];
-  std::string name = App.get_name();
+  std::string name;
   std::string mac;
   
   std::string base_json = "{\"emeter\": {\"get_realtime\":{ "
