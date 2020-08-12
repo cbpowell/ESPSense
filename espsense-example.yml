@@ -1,0 +1,58 @@
+esphome:
+  name: espsense
+  platform: ESP8266
+  board: nodemcu
+  # Include espsense.h custom component file
+  includes:
+    - espsense.h
+  # Uses the ESPAsyncUDP library
+  libraries:
+    - "ESPAsyncUDP"
+    
+
+wifi:
+  ssid: "your_wifi"
+  password: "your_wifi_password"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Fallback Hotspot"
+    password: "fallback_password"
+
+captive_portal:
+  
+# Enable logging
+logger:
+  level: DEBUG
+
+ota:
+  safe_mode: True
+  password: "ota_safe_pass"
+
+# Template sensor, values published by the below time component
+sensor:
+  - platform: template
+    name: Test Sensor
+    id: test_sensor
+    unit_of_measurement: W
+
+
+time:
+  - platform: sntp
+    id: sntp_time
+    on_time:
+          # Every 5 sec
+          - seconds: /5
+            then:
+              # Change the sensor value randomly every 5 seconds
+              - lambda: !lambda |-
+                  long randomPowerState = random(5, 15);
+                  id(test_sensor).publish_state((float)randomPowerState);
+  
+custom_component:
+  # Create a new ESPSense component with the ID of ESPHome power sensor
+  # Sensor can be a template that calculates (or reports) power from a *different*
+  # sensor or switch as well!
+- lambda: |-
+    auto sensor_power = new ESPSense(id(test_sensor), 120);
+    return {sensor_power};
