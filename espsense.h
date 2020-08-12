@@ -9,13 +9,18 @@ public:
   AsyncUDP udp;
   Sensor* sensor_id = NULL;
   
-  ESPSense(Sensor *sid, float voltage) : Component() {
-    voltage = voltage;
+  ESPSense(Sensor *sid, float conf_voltage = 120.0) : Component() {
+    voltage = conf_voltage;
     sensor_id = sid;
+    mac = get_mac_address_pretty();
   }
   
+  ESPSense(Sensor *sid, std::string config_mac, float conf_voltage = 120.0) : Component() {
+    voltage = conf_voltage;
+    sensor_id = sid;
+    mac = config_mac;
   }
-
+  
   void setup() override {
     if(udp.listen(9999)) {
       ESP_LOGI("ESPSense","Listening on port 9999");
@@ -29,6 +34,9 @@ public:
 private:
   float voltage;
   char response_buf[RES_SIZE];
+  std::string name = App.get_name();
+  std::string mac;
+  
   std::string base_json = "{\"emeter\": {\"get_realtime\":{ "
                               "\"current\": %.02f, \"voltage\": %.02f, \"power\": %.02f, \"total\": 0, \"err_code\": 0}}, "
                            "\"system\": {\"get_sysinfo\": "
@@ -98,11 +106,8 @@ private:
   }
   
   int generate_response(char* data, float power) {
-    const char* name = App.get_name().c_str();
-    const char* mac = get_mac_address_pretty().c_str();
-    
     float current = power / voltage;
-    int response_len = snprintf(data, RES_SIZE, base_json.c_str(), current, voltage, power, mac, mac, name);
+    int response_len = snprintf(data, RES_SIZE, base_json.c_str(), current, voltage, power, mac.c_str(), mac.c_str(), name.c_str());
     ESP_LOGD("ESPSense", "JSON out: %s", data);
     return response_len;
   }
