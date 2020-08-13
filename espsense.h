@@ -29,13 +29,14 @@ public:
       // Parse incoming packets
       start_sense_response();
     } else {
-      ESP_LOGD("ESPSense", "Failed to start UDP listen!");
+      ESP_LOGE("ESPSense", "Failed to start UDP listen!");
     }
   }
   
 private:
   float voltage;
   char response_buf[RES_SIZE];
+  StaticJsonBuffer<200> jsonBuffer;
   std::string name;
   std::string mac;
   
@@ -59,20 +60,25 @@ private:
     ESP_LOGD("ESPSense", "Got message: %s", result);
     
     // Parse JSON
-    json::parse_json(result,[&](JsonObject &req) {
-      JsonVariant request = req["emeter"]["get_realtime"];
-      if (request.success()) {
-        ESP_LOGD("ESPSense", "Power measurement requested");
-        // Generate JSON response string
-        float power = get_power();
-        int response_len = generate_response(response_buf, power);
-        // Encrypt
-        char encrypted[response_len];
-        encrypt(response_buf, response_len, encrypted);
-        // Respond to request
-        packet.write((uint8_t *)encrypted, response_len);
-      }
-    });
+    jsonBuffer.clear();
+    JsonObject &req = jsonBuffer.parseObject(result);
+    if(!req.success()) {
+      ESP_LOGW("ESPSense", "JSON parse failed!");
+    }
+    
+    // Check if this is a valid request
+    JsonVariant request = req["emeter"]["get_realtime"];
+    if (request.success()) {
+      ESP_LOGD("ESPSense", "Power measurement requested");
+      // Generate JSON response string
+      float power = get_power();
+      int response_len = generate_response(response_buf, power);
+      // Encrypt
+      char encrypted[response_len];
+      encrypt(response_buf, response_len, encrypted);
+      // Respond to request
+      packet.write((uint8_t *)encrypted, response_len);
+    }
   }
   
   void decrypt(const uint8_t* data, size_t len, char* result) {
