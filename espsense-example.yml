@@ -8,6 +8,7 @@ esphome:
   # Uses the ESPAsyncUDP library
   libraries:
     - "ESPAsyncUDP"
+    - "ArduinoJson-esphomelib@5.13.3"
     
 
 wifi:
