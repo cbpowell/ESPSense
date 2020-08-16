@@ -30,7 +30,7 @@ ota:
   safe_mode: True
   password: "ota_safe_pass"
 
-# Template sensor, values published by the below time component
+# Template sensor, random values published by the below time component as an example
 sensor:
   - platform: template
     name: Test Sensor
@@ -46,6 +46,7 @@ time:
           - seconds: /5
             then:
               # Change the sensor value randomly every 5 seconds
+              # !!!!! Don't actually use this! For demo purposes only !!!!!
               - lambda: !lambda |-
                   long randomPowerState = random(5, 15);
                   id(test_sensor).publish_state((float)randomPowerState);
