@@ -15,9 +15,12 @@ esphome:
   # Include espsense.h custom component file
   includes:
     - espsense.h
-  # Uses the ESPAsyncUDP library
+  # Uses the libraries:
+  # - ESPAsyncUDP, to handle UDP communication
+  # - ArduinoJson-esphomelib, which might already be included if using the ESPHome webserver
   libraries:
     - "ESPAsyncUDP"
+    - "ArduinoJson-esphomelib@5.13.3"
     
 
 # Template sensor as an example
