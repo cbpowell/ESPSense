@@ -5,6 +5,9 @@ Similar to my [SenseLink](https://github.com/cbpowell/SenseLink) project, ESPSen
 
 **You should use this tool at your own risk!** Sense is not obligated to provide any support related to issues with this project, and there's no guarantee everything will reliably work, or even work at all. Neither I or Sense can guarantee it won't affect your Sense data, particularly if things go wrong!
 
+# Confirmed Compatible Smart Plugs
+One of the more useful cases is flashing other (commercial) energy-monitoring smart plugs with ESPHome, and then using them with ESPSense. Check out [the wiki](https://github.com/cbpowell/ESPSense/wiki) for details on confirmed "conversions" of other plugs!
+
 # Usage
 Place the `espsense.h` [custom component](https://esphome.io/custom/custom_component.html) in your ESPHome build directory, and add the `custom_component` details and lambda to your YAML as per the ESPHome directions - from the included example YAML file:
 
