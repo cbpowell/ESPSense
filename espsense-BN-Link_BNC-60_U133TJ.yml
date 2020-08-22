@@ -1,5 +1,5 @@
 
-#Configuration for EFUN SH3331W Smart Plug
+#Configuration for BN-Link BNC-60/U133TJ
 
 substitutions:
   plug_name: bnlink_01
@@ -50,8 +50,8 @@ time:
 binary_sensor:
   - platform: gpio
     pin:
-      number: GPIO13
-      inverted: True
+      number: GPIO3
+      inverted: True # VERIFY
     name: "${plug_name}_button"
     on_press:
       then:
@@ -62,22 +62,22 @@ switch:
   - platform: gpio
     name: "${plug_name}_Relay"
     id: "${plug_name}_Relay"
-    pin: GPIO15
+    pin: GPIO14
     restore_mode: ALWAYS_ON
   - platform: gpio
     name: "${plug_name}_LED_Blue"
     id: "${plug_name}_LED_Blue"
-    pin: GPIO2
+    pin: GPIO13 # VERIFY
     inverted: True
     restore_mode: ALWAYS_ON
-  - platform: gpio
-    name: "${plug_name}_ESP_LED"
-    pin: GPIO4
-    inverted: True
-    restore_mode: ALWAYS_ON
+  # - platform: gpio
+  #   name: "${plug_name}_ESP_LED"
+  #   pin: GPIO4
+  #   inverted: True
+  #   restore_mode: ALWAYS_ON
   - platform: gpio
     name: "${plug_name}_LED_Red"
-    pin: GPIO0
+    pin: GPIO1
     inverted: True
     restore_mode: ALWAYS_OFF
 
@@ -86,8 +86,8 @@ sensor:
     sel_pin:
       number: GPIO12
       inverted: True
-    cf_pin: GPIO05
-    cf1_pin: GPIO14
+    cf_pin: GPIO04
+    cf1_pin: GPIO5
     current_resistor: ${current_res}
     voltage_divider: ${voltage_div}
     current:
