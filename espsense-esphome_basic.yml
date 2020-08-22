@@ -1,0 +1,35 @@
+# Basic config to flash via ESPurna
+
+substitutions:
+  plug_name: esphome_basic
+
+esphome:
+  name: ${plug_name}
+  platform: ESP8266
+  board: esp01_1m
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_pass
+  fast_connect: on
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "${plug_name} Fallback Hotspot"
+    password: !secret ap_pass
+    
+captive_portal:
+  
+api:
+
+web_server:
+  port: 80
+
+ota:
+  safe_mode: True
+  password: !secret ota_pass
+
+# Enable logging
+logger:
+  level: DEBUG
+  baud_rate: 0 # Disable UART logging, we have no physical connections!
