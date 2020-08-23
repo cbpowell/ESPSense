@@ -1,7 +1,17 @@
 esphome:
 #based on yaml from esphome titled RGB Smart Plug 16A with power monitoring
 #All the GPIO's have been updated to match the bn-link and espSense code added
-  name: bnlink1
+#GPIOS for BN-Link BNC-60/U133TJ
+#GPIO01	Led1i
+#GPIO03	Button1
+#GPIO04	BL0937 CF
+#GPIO05	HLWBL CF1
+#GPIO12	HLWBL SELi
+#GPIO13	Led2i
+#GPIO14	Relay1
+#
+
+name: bnlink1
   platform: ESP8266
   board: esp01_1m
   includes:
@@ -81,7 +91,7 @@ sensor:
       unit_of_measurement: W
       id: wattage
       filters:
-        - delta: 0.1 # Don't report if change is less than 10W from previous reported, make it smaller if you got smaller load
+        - delta: 5 # Don't report if change is less than 5W from previous reported, make it smaller if you got smaller load
         - multiply: .14
             
     current:
@@ -104,14 +114,6 @@ sensor:
             - 356.0 -> 119.7 #load was on
     change_mode_every: 1 #Skips first reading after each change, so this will double the update interval. Default 8
     update_interval: 10s #10s setting => 20 second effective update rate for Power, 40 second for Current and Voltage. Default 60s
-
-# Reports the total Power so-far each day, resets at midnight, see https://esphome.io/components/sensor/total_daily_energy.html
-  - platform: total_daily_energy
-    name: ${friendly_name} Total Daily Energy
-    power_id: wattage
-    filters:
-        - multiply: 0.001  ## convert Wh to kWh
-    unit_of_measurement: kWh
 
 binary_sensor:
 # Reports if this device is Connected or not
