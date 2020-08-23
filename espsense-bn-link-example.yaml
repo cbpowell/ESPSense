@@ -23,6 +23,10 @@ name: bnlink1
 wifi:
   ssid: "ssid"
   password: "password"
+  reboot_timeout: 0s 
+  #this reboot_timeout may not be necessary--I'm pretty sure it's the API reboot_timeout that's needed. 
+  #If you have wifi issues you should remove this so the device will automatically reset after a lost wifi connection.
+  #More testing is needed here.
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -36,6 +40,11 @@ logger:
 
 # Enable Home Assistant API
 api:
+  reboot_timeout: 0s
+  #There appears to be some sort of bug where the api connection gets lost after about 15 minutes due to a bad pointer or something in the espHome code.(Lots of issues related to this are posted)
+  #Due to this API disconnect error the unit will reboot 15 minutes after that and cause the relay to briefly blink off then back on.
+  #The API is not actually down as you can create a new connection to it easily.
+  #If you're using this for Sense, then the api isn't even needed anyway.   Setting reboot_timeout to 0s disables this restart function.
 
 ota:
 
