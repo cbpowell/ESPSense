@@ -61,7 +61,7 @@ binary_sensor:
     on_press:
       then:
         - switch.toggle: "relay"
-        # - switch.toggle: "${plug_name}_LED_Blue"
+        # Note that blue LED appears to be tied to relay state internally (i.e. electrically)
 
 switch:
   - platform: gpio
