@@ -41,7 +41,7 @@ captive_portal:
 
 # Enable logging
 logger:
-  level: DEBUG
+  # level: DEBUG
   baud_rate: 0 # Disable UART logging, we have no physical connections!
 
 # Enable Home Assistant API
@@ -70,16 +70,16 @@ switch:
     restore_mode: ${restore_mode}
     # Use blue LED to indicate relay state
     on_turn_on:
-      - switch.on: "led_blue"
+      - switch.turn_on: "led_blue"
     on_turn_off:
-      - switch.off: "led_blue"
+      - switch.turn_off: "led_blue"
     
   - platform: gpio
     name: "${plug_name} LED Blue"
     id: "led_blue"
     pin: GPIO13
     inverted: True
-    restore_mode: ALWAYS_ON
+    restore_mode: ${restore_mode} # Matches relay
   
   # Red LED used for ESPHome status below, but this could be
   # reconfigured for other purposes!
@@ -133,7 +133,7 @@ sensor:
       unit_of_measurement: W
       filters:
         # Filter changes of less than 0.1 W
-        - delta: 0.25
+        - delta: 0.1
         # - calibrate_linear:
         #   # Map X (from sensor) to Y (true value)
         #   # At least 2 data points required
