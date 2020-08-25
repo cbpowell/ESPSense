@@ -1,4 +1,4 @@
-# Basic config to flash via ESPurna
+# Basic "safe" config
 
 substitutions:
   plug_name: esphome_basic
