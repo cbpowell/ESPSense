@@ -1,6 +1,8 @@
 
 #Configuration for TGWF115APM
 
+# BASIC CALIBRATION STILL REQUIRED
+
 substitutions:
   plug_name: topgreener_apm
   # Plug state to set upon powerup (or after power loss)

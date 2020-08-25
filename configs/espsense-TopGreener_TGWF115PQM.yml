@@ -1,6 +1,8 @@
 
 #Configuration for TGWF115PQM (Small plug)
 
+# BASIC CALIBRATION STILL REQUIRED
+
 substitutions:
   plug_name: topgreener_pqm
   # Plug state to set upon powerup (or after power loss)

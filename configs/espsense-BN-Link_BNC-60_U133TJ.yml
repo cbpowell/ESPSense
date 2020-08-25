@@ -1,6 +1,8 @@
 
 #Configuration for BN-Link BNC-60/U133TJ
 
+# BASIC CALIBRATION STILL REQUIRED
+
 substitutions:
   plug_name: bnlink_01
   # Plug state to set upon powerup (or after power loss)
