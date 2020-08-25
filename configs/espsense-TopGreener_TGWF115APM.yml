@@ -2,11 +2,13 @@
 #Configuration for TGWF115APM
 
 substitutions:
-  plug_name: topgreener_01
-  # Higher value gives lower watt readout
-  current_res: "0.00245" # started at 0.00221
-  # Lower value gives lower voltage readout
-  voltage_div: "883" # started at 940
+  plug_name: topgreener_apm
+  # Plug state to set upon powerup (or after power loss)
+  # See options here: https://esphome.io/components/switch/gpio.html
+  restore_mode: ALWAYS_ON
+  # Detail calibration can be done with calibrate_linear sensor filters below
+  current_res: "0.001" # Default ESPHome value
+  voltage_div: "2351" # Default ESPHome value
 
 esphome:
   name: ${plug_name}
@@ -51,35 +53,33 @@ binary_sensor:
   - platform: gpio
     pin:
       number: GPIO3
-      inverted: True # VERIFY
-    name: "${plug_name}_button"
+      inverted: True
+    name: "${plug_name} Button"
     on_press:
       then:
-        - switch.toggle: "${plug_name}_Relay"
-        - switch.toggle: "${plug_name}_LED_Blue"
-
+        - switch.toggle: "relay"
+        # Note that blue LED appears to be tied to relay state internally (i.e. electrically)
+    
 switch:
+  # Main plug control relay
   - platform: gpio
-    name: "${plug_name}_Relay"
-    id: "${plug_name}_Relay"
+    name: "${plug_name} Relay"
+    id: "relay"
     pin: GPIO14
-    restore_mode: ALWAYS_ON
-  - platform: gpio
-    name: "${plug_name}_LED_Blue"
-    id: "${plug_name}_LED_Blue"
-    pin: GPIO13 # VERIFY
-    inverted: True
-    restore_mode: ALWAYS_ON
+    restore_mode: ${restore_mode}
+    
+  # Used for Status LED below, but could be repurposed!
   # - platform: gpio
-  #   name: "${plug_name}_ESP_LED"
-  #   pin: GPIO4
-  #   inverted: True
+  #   name: "${plug_name} Green LED"
+  #   id: "led_green"
+  #   pin: GPIO13
   #   restore_mode: ALWAYS_ON
-  - platform: gpio
-    name: "${plug_name}_LED_Red"
-    pin: GPIO1
-    inverted: True
-    restore_mode: ALWAYS_OFF
+  
+status_led:
+  # Use Green LED as ESPHome's built-in status indicator
+  pin:
+    number: GPIO13
+    inverted: False
 
 sensor:
   - platform: hlw8012
@@ -91,20 +91,45 @@ sensor:
     current_resistor: ${current_res}
     voltage_divider: ${voltage_div}
     current:
-      name: "${plug_name}_Amperage"
+      name: "${plug_name} Amperage"
       unit_of_measurement: A
+      filters:
+        # Filter changes of less than 0.1 A
+        - delta: 0.1
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     voltage:
-      name: "${plug_name}_Voltage"
+      name: "${plug_name} Voltage"
       unit_of_measurement: V
+      filters:
+        # Filter changes of less than 0.1 V
+        - delta: 0.1
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     power:
-      name: "${plug_name}_Wattage"
+      id: "wattage"
+      name: "${plug_name} Wattage"
       unit_of_measurement: W
-      id: "${plug_name}_Wattage"
+      filters:
+        # Filter changes of less than 0.1 W
+        - delta: 0.25
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     change_mode_every: 8
-    update_interval: 3s
+    update_interval: 2s
+    
   - platform: total_daily_energy
-    name: "${plug_name}_Total Daily Energy"
-    power_id: "${plug_name}_Wattage"
+    name: "${plug_name} Total Daily Energy"
+    power_id: "wattage"
     filters:
         # Multiplication factor from W to kW is 0.001
         - multiply: 0.001
@@ -112,9 +137,10 @@ sensor:
 
 # Extra sensor to keep track of plug uptime
   - platform: uptime
-    name: ${plug_name}_Uptime Sensor
+    name: ${plug_name} Uptime Sensor
     
 custom_component:
 - lambda: |-
-    auto sensor_power = new ESPSense(id(${plug_name}_Wattage), 120);
+    auto sensor_power = new ESPSense(id(wattage), 120);
     return {sensor_power};
+    

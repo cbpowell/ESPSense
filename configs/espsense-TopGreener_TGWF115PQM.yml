@@ -3,7 +3,10 @@
 
 substitutions:
   plug_name: topgreener_pqm
-  # Calibration is done with calibrate_linear sensor filters below
+  # Plug state to set upon powerup (or after power loss)
+  # See options here: https://esphome.io/components/switch/gpio.html
+  restore_mode: ALWAYS_ON
+  # Detail calibration can be done with calibrate_linear sensor filters below
   current_res: "0.001" # Default ESPHome value
   voltage_div: "2351" # Default ESPHome value
 
@@ -46,12 +49,6 @@ time:
   - platform: homeassistant
     id: homeassistant_time
     
-status_led:
-  # Use Green LED as ESPHome's built-in status indicator
-  pin:
-    number: GPIO13
-    inverted: False
-    
 binary_sensor:
   - platform: gpio
     pin:
@@ -62,20 +59,27 @@ binary_sensor:
       then:
         - switch.toggle: "relay"
         # Note that blue LED appears to be tied to relay state internally (i.e. electrically)
-
+    
 switch:
+  # Main plug control relay
   - platform: gpio
     name: "${plug_name} Relay"
     id: "relay"
     pin: GPIO14
-    restore_mode: ALWAYS_ON
+    restore_mode: ${restore_mode}
     
-  # Used for Status LED above, but could be repurposed!
+  # Used for Status LED below, but could be repurposed!
   # - platform: gpio
   #   name: "${plug_name} Green LED"
   #   id: "led_green"
   #   pin: GPIO13
   #   restore_mode: ALWAYS_ON
+  
+status_led:
+  # Use Green LED as ESPHome's built-in status indicator
+  pin:
+    number: GPIO13
+    inverted: False
 
 sensor:
   - platform: hlw8012
@@ -89,15 +93,40 @@ sensor:
     current:
       name: "${plug_name} Amperage"
       unit_of_measurement: A
+      filters:
+        # Filter changes of less than 0.1 A
+        - delta: 0.1
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     voltage:
       name: "${plug_name} Voltage"
       unit_of_measurement: V
+      filters:
+        # Filter changes of less than 0.1 V
+        - delta: 0.1
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     power:
+      id: "wattage"
       name: "${plug_name} Wattage"
       unit_of_measurement: W
-      id: "wattage"
+      filters:
+        # Filter changes of less than 0.1 W
+        - delta: 0.25
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     change_mode_every: 8
-    update_interval: 3s
+    update_interval: 2s
+    
   - platform: total_daily_energy
     name: "${plug_name} Total Daily Energy"
     power_id: "wattage"

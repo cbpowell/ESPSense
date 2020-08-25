@@ -3,7 +3,10 @@
 
 substitutions:
   plug_name: bnlink_01
-  # Calibration is done with calibrate_linear sensor filters below
+  # Plug state to set upon powerup (or after power loss)
+  # See options here: https://esphome.io/components/switch/gpio.html
+  restore_mode: ALWAYS_ON
+  # Detail calibration can be done with calibrate_linear sensor filters below
   current_res: "0.001" # Default ESPHome value
   voltage_div: "2351" # Default ESPHome value
 
@@ -55,14 +58,19 @@ binary_sensor:
     on_press:
       then:
         - switch.toggle: "relay"
-        - switch.toggle: "led_blue"
 
 switch:
+  # Main plug control relay
   - platform: gpio
     name: "${plug_name} Relay"
     id: "relay"
     pin: GPIO14
-    restore_mode: ALWAYS_ON # Assume ON restore mode - confirm if that's what you want!
+    restore_mode: ${restore_mode}
+    # Use blue LED to indicate relay state
+    on_turn_on:
+      - switch.on: "led_blue"
+    on_turn_off:
+      - switch.off: "led_blue"
     
   - platform: gpio
     name: "${plug_name} LED Blue"
@@ -70,7 +78,9 @@ switch:
     pin: GPIO13
     inverted: True
     restore_mode: ALWAYS_ON
-    
+  
+  # Red LED used for ESPHome status below, but this could be
+  # reconfigured for other purposes!
   # - platform: gpio
   #   name: "${plug_name} LED Red"
   #   id: "led_red"
@@ -99,21 +109,36 @@ sensor:
       filters:
         # Filter changes of less than 0.1 A
         - delta: 0.1
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     voltage:
       name: "${plug_name} Voltage"
       unit_of_measurement: V
       filters:
         # Filter changes of less than 0.1 V
         - delta: 0.1
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     power:
       id: "wattage"
       name: "${plug_name} Wattage"
       unit_of_measurement: W
       filters:
         # Filter changes of less than 0.1 W
-        - delta: 0.1
+        - delta: 0.25
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     change_mode_every: 8
-    update_interval: 3s
+    update_interval: 2s
   - platform: total_daily_energy
     name: "${plug_name} Total Daily Energy"
     power_id: "wattage"
