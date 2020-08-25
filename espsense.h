@@ -1,8 +1,11 @@
+// Copyright 2020, Charles Powell
+
 #include "esphome.h"
 #include "ESPAsyncUDP.h"
 #include "ArduinoJson.h"
 
 #define RES_SIZE 400
+#define REQ_SIZE 70
 
 class ESPSense : public Component {
 public:
@@ -36,6 +39,7 @@ public:
 private:
   float voltage;
   char response_buf[RES_SIZE];
+  
   StaticJsonBuffer<200> jsonBuffer;
   std::string name;
   std::string mac;
@@ -53,26 +57,37 @@ private:
   
   void parse_packet(AsyncUDPPacket &packet) {
     ESP_LOGD("ESPSense", "Got packet from %s", packet.remoteIP().toString().c_str());
-    char result[packet.length()];
+    
+    if(packet.length() > REQ_SIZE) {
+      // Not a Sense request packet
+      ESP_LOGD("ESPSense", "Packet is oversized, ignoring");
+      return;
+    }
+    
+    char request_buf[REQ_SIZE];
     
     // Decrypt
-    decrypt(packet.data(), packet.length(), result);
-    ESP_LOGD("ESPSense", "Got message: %s", result);
+    decrypt(packet.data(), packet.length(), request_buf);
+    
+    // Add null terminator
+    request_buf[packet.length()] = '\0';
+    
+    // Print into null-terminated string
+    ESP_LOGD("ESPSense", "Got message: %s", request_buf);
     
     // Parse JSON
     jsonBuffer.clear();
-    JsonObject &req = jsonBuffer.parseObject(result);
+    JsonObject &req = jsonBuffer.parseObject(request_buf);
     if(!req.success()) {
       ESP_LOGW("ESPSense", "JSON parse failed!");
     }
     
-    // Check if this is a valid request
+    // Check if this is a valid request by looking for emeter key
     JsonVariant request = req["emeter"]["get_realtime"];
     if (request.success()) {
       ESP_LOGD("ESPSense", "Power measurement requested");
       // Generate JSON response string
-      float power = get_power();
-      int response_len = generate_response(response_buf, power);
+      int response_len = generate_response(response_buf);
       // Encrypt
       char encrypted[response_len];
       encrypt(response_buf, response_len, encrypted);
@@ -113,7 +128,13 @@ private:
     return state;
   }
   
-  int generate_response(char* data, float power) {
+  float get_voltage() {
+    return voltage;
+  }
+  
+  int generate_response(char* data) {
+    float power = get_power();
+    float voltage = get_voltage();
     float current = power / voltage;
     int response_len = snprintf(data, RES_SIZE, base_json.c_str(), current, voltage, power, mac.c_str(), mac.c_str(), name.c_str());
     ESP_LOGD("ESPSense", "JSON out: %s", data);
