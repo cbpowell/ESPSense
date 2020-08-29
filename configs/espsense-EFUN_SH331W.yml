@@ -6,11 +6,13 @@ substitutions:
   # Plug state to set upon powerup (or after power loss)
   # See options here: https://esphome.io/components/switch/gpio.html
   restore_mode: ALWAYS_ON
+  
+  # Base calibration to 90W lightbulb, Kill-a-Watt between plug and wall
   # Detail calibration can be done with calibrate_linear sensor filters below
-  # Higher value gives lower watt reading
-  current_res: "0.00245" # started at 0.00221
-  # Lower value gives lower voltage reading
-  voltage_div: "883" # started at 940
+  current_res: "0.00236"
+  voltage_div: "878"
+  # Increasing current_res reduces reported wattage
+  # Increasing voltage_div increases reported voltage
 
 esphome:
   name: ${plug_name}
@@ -44,7 +46,9 @@ logger:
   # level: DEBUG
   baud_rate: 0 # Disable UART logging, we have no physical connections!
 
-# Enable Home Assistant API
+# Home Assistant API
+# Comment out if not using API, but you'll also need to remove the total_daily_energy and
+# time sensors below
 api:
 
 time:
@@ -106,8 +110,6 @@ sensor:
       name: "${plug_name} Amperage"
       unit_of_measurement: A
       filters:
-        # Filter changes of less than 0.1 A
-        - delta: 0.1
         # - calibrate_linear:
         #   # Map X (from sensor) to Y (true value)
         #   # At least 2 data points required
@@ -117,8 +119,6 @@ sensor:
       name: "${plug_name} Voltage"
       unit_of_measurement: V
       filters:
-        # Filter changes of less than 0.1 V
-        - delta: 0.1
         # - calibrate_linear:
         #   # Map X (from sensor) to Y (true value)
         #   # At least 2 data points required
@@ -129,15 +129,13 @@ sensor:
       name: "${plug_name} Wattage"
       unit_of_measurement: W
       filters:
-        # Filter changes of less than 0.1 W
-        - delta: 0.25
         # - calibrate_linear:
         #   # Map X (from sensor) to Y (true value)
         #   # At least 2 data points required
         #   - 0.0 -> 0.0
         #   - 1.0 -> 1.0 #load was on
     change_mode_every: 8
-    update_interval: 2s
+    update_interval: 3s
     
   - platform: total_daily_energy
     name: "${plug_name} Total Daily Energy"

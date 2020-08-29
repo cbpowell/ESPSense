@@ -1,16 +1,18 @@
 
-#Configuration for TGWF115APM
-
-# BASIC CALIBRATION STILL REQUIRED
+# Configuration for TGWF115APM (Big 15A plug)
 
 substitutions:
   plug_name: topgreener_apm
   # Plug state to set upon powerup (or after power loss)
   # See options here: https://esphome.io/components/switch/gpio.html
   restore_mode: ALWAYS_ON
+  
+  # Base calibration to 90W lightbulb, Kill-a-Watt between plug and wall
   # Detail calibration can be done with calibrate_linear sensor filters below
-  current_res: "0.001" # Default ESPHome value
-  voltage_div: "2351" # Default ESPHome value
+  current_res: "0.00228"
+  voltage_div: "2120"
+  # Increasing current_res reduces reported wattage
+  # Increasing voltage_div increases reported voltage
 
 esphome:
   name: ${plug_name}
@@ -38,13 +40,17 @@ ota:
   password: !secret ota_pass
 
 captive_portal:
+  
+# web_server:
 
-# Enable logging
+# Logging
 logger:
-  level: DEBUG
+  # level: DEBUG
   baud_rate: 0 # Disable UART logging, we have no physical connections!
 
-# Enable Home Assistant API
+# Home Assistant API
+# Comment out if not using API, but you'll also need to remove the total_daily_energy and
+# time sensors below
 api:
 
 time:
@@ -96,8 +102,6 @@ sensor:
       name: "${plug_name} Amperage"
       unit_of_measurement: A
       filters:
-        # Filter changes of less than 0.1 A
-        - delta: 0.1
         # - calibrate_linear:
         #   # Map X (from sensor) to Y (true value)
         #   # At least 2 data points required
@@ -107,8 +111,6 @@ sensor:
       name: "${plug_name} Voltage"
       unit_of_measurement: V
       filters:
-        # Filter changes of less than 0.1 V
-        - delta: 0.1
         # - calibrate_linear:
         #   # Map X (from sensor) to Y (true value)
         #   # At least 2 data points required
@@ -119,15 +121,18 @@ sensor:
       name: "${plug_name} Wattage"
       unit_of_measurement: W
       filters:
-        # Filter changes of less than 0.1 W
-        - delta: 0.25
+        # Moving average filter to try and reduce a periodic drop of ~1-2W
+        # Unsure of cause, may be a better solution!
+        - sliding_window_moving_average:
+            window_size: 2
+            send_every: 1
         # - calibrate_linear:
         #   # Map X (from sensor) to Y (true value)
         #   # At least 2 data points required
         #   - 0.0 -> 0.0
         #   - 1.0 -> 1.0 #load was on
     change_mode_every: 8
-    update_interval: 2s
+    update_interval: 3s # Longer interval gives better accuracy
     
   - platform: total_daily_energy
     name: "${plug_name} Total Daily Energy"
