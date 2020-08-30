@@ -39,7 +39,8 @@ custom_component:
   # Create ESPSense instance, passing the ID of the sensor it should retrieve
   # power data from
 - lambda: |-
-    auto sensor_power = new ESPSense(id(test_sensor), 120);
+    float voltage = 120.0;
+    auto sensor_power = new ESPSense(id(test_sensor), voltage);
     return {sensor_power};
 ```
 
