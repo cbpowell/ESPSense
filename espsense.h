@@ -78,27 +78,27 @@ private:
   
   void parse_packet(AsyncUDPPacket &packet) {
     ESP_LOGD("ESPSense", "Got packet from %s", packet.remoteIP().toString().c_str());
-
+    
     if(packet.length() > REQ_SIZE) {
       // Not a Sense request packet
       ESP_LOGD("ESPSense", "Packet is oversized, ignoring");
       return;
     }
     
-    char result[REQ_SIZE];
+    char request_buf[REQ_SIZE];
     
     // Decrypt
-    decrypt(packet.data(), packet.length(), result);
+    decrypt(packet.data(), packet.length(), request_buf);
     
     // Add null terminator
-    result[packet.length()] = '\0';
+    request_buf[packet.length()] = '\0';
     
     // Print into null-terminated string
-    ESP_LOGD("ESPSense", "Got message: %s", result);
+    ESP_LOGD("ESPSense", "Got message: %s", request_buf);
     
     // Parse JSON
     jsonBuffer.clear();
-    JsonObject &req = jsonBuffer.parseObject(result);
+    JsonObject &req = jsonBuffer.parseObject(request_buf);
     if(!req.success()) {
       ESP_LOGW("ESPSense", "JSON parse failed!");
     }

@@ -3,10 +3,16 @@
 
 substitutions:
   plug_name: efun_plug1
-  # Higher value gives lower watt readout
-  current_res: "0.00245" # started at 0.00221
-  # Lower value gives lower voltage readout
-  voltage_div: "883" # started at 940
+  # Plug state to set upon powerup (or after power loss)
+  # See options here: https://esphome.io/components/switch/gpio.html
+  restore_mode: ALWAYS_ON
+  
+  # Base calibration to 90W lightbulb, Kill-a-Watt between plug and wall
+  # Detail calibration can be done with calibrate_linear sensor filters below
+  current_res: "0.00236"
+  voltage_div: "878"
+  # Increasing current_res reduces reported wattage
+  # Increasing voltage_div increases reported voltage
 
 esphome:
   name: ${plug_name}
@@ -37,10 +43,12 @@ captive_portal:
 
 # Enable logging
 logger:
-  level: DEBUG
+  # level: DEBUG
   baud_rate: 0 # Disable UART logging, we have no physical connections!
 
-# Enable Home Assistant API
+# Home Assistant API
+# Comment out if not using API, but you'll also need to remove the total_daily_energy and
+# time sensors below
 api:
 
 time:
@@ -55,31 +63,39 @@ binary_sensor:
     name: "${plug_name}_button"
     on_press:
       then:
-        - switch.toggle: "${plug_name}_Relay"
-        - switch.toggle: "${plug_name}_LED_Blue"
+        - switch.toggle: "relay"
 
 switch:
+  # Main plug control relay
   - platform: gpio
-    name: "${plug_name}_Relay"
-    id: "${plug_name}_Relay"
+    name: "${plug_name} Relay"
+    id: "relay"
     pin: GPIO15
-    restore_mode: ALWAYS_ON
+    restore_mode: ${restore_mode}
+    # Use blue LED to indicate relay state
+    on_turn_on:
+      - switch.turn_on: "led_blue"
+    on_turn_off:
+      - switch.turn_off: "led_blue"
+    
   - platform: gpio
-    name: "${plug_name}_LED_Blue"
-    id: "${plug_name}_LED_Blue"
+    name: "${plug_name} Blue LED"
+    id: "led_blue"
     pin: GPIO2
     inverted: True
-    restore_mode: ALWAYS_ON
-  - platform: gpio
-    name: "${plug_name}_ESP_LED"
-    pin: GPIO4
+    restore_mode: ${restore_mode} # Matches relay
+  
+  # - platform: gpio
+  #   name: "${plug_name}_LED_Red"
+  #   pin: GPIO0
+  #   inverted: True
+  #   restore_mode: ALWAYS_OFF
+
+status_led:
+  # Use Red LED as ESPHome's built-in status indicator
+  pin:
+    number: GPIO0
     inverted: True
-    restore_mode: ALWAYS_ON
-  - platform: gpio
-    name: "${plug_name}_LED_Red"
-    pin: GPIO0
-    inverted: True
-    restore_mode: ALWAYS_OFF
 
 sensor:
   - platform: hlw8012
@@ -91,20 +107,39 @@ sensor:
     current_resistor: ${current_res}
     voltage_divider: ${voltage_div}
     current:
-      name: "${plug_name}_Amperage"
+      name: "${plug_name} Amperage"
       unit_of_measurement: A
+      filters:
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     voltage:
-      name: "${plug_name}_Voltage"
+      name: "${plug_name} Voltage"
       unit_of_measurement: V
+      filters:
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     power:
-      name: "${plug_name}_Wattage"
+      id: "wattage"
+      name: "${plug_name} Wattage"
       unit_of_measurement: W
-      id: "${plug_name}_Wattage"
+      filters:
+        # - calibrate_linear:
+        #   # Map X (from sensor) to Y (true value)
+        #   # At least 2 data points required
+        #   - 0.0 -> 0.0
+        #   - 1.0 -> 1.0 #load was on
     change_mode_every: 8
     update_interval: 3s
+    
   - platform: total_daily_energy
-    name: "${plug_name}_Total Daily Energy"
-    power_id: "${plug_name}_Wattage"
+    name: "${plug_name} Total Daily Energy"
+    power_id: "wattage"
     filters:
         # Multiplication factor from W to kW is 0.001
         - multiply: 0.001
@@ -112,9 +147,9 @@ sensor:
 
 # Extra sensor to keep track of plug uptime
   - platform: uptime
-    name: ${plug_name}_Uptime Sensor
+    name: ${plug_name} Uptime Sensor
     
 custom_component:
 - lambda: |-
-    auto sensor_power = new ESPSense(id(${plug_name}_Wattage), 120);
+    auto sensor_power = new ESPSense(id(wattage), 120);
     return {sensor_power};
