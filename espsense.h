@@ -6,7 +6,7 @@
 
 #define RES_SIZE 400
 #define REQ_SIZE 70
-#define MAX_PLUG_COUNT 5  // Somewhat arbitrary as of now
+#define MAX_PLUG_COUNT 10  // Somewhat arbitrary as of now
 
 class ESPSensePlug {
 public:
