@@ -48,7 +48,23 @@ Note that whatever sensor you tell ESPSense to monitor is assumed to report a **
 
 By default, the MAC address of your ESP device will be reported to Sense. You can configure that manually if desired. See the `espsense.h` file for the alternate constructor methods.
 
-# Todo
-1. Currently ESPSense can only report power usage of a single sensor - adding multiple instances as additional `custom_components` doesn't work (I think because the UDP port is consumed by the first instance). I plan to add the ability to define an array of plugs, similar to the way SenseLink works.
+# Advanced Usage
+If you're using a device that measures power/voltage/current of more than one thing, ESPSense also supports reporting back multiple "plugs" to Sense. In the custom component lambda, you can configure each plug and add it to the ESPSense component. The plug `voltage_sid` and `current_sid` sensor ID values are optional, and ESPSense will fall back to using the specified static voltage and calculating current from power / voltage, respectively, if not specified.
+```yaml
+custom_component:
+  # Create ESPSense instance, passing the ID of the sensor it should retrieve
+  # power data from
+- lambda: |-
+    // Define "plugs"
+    ESPSensePlug plug1 = ESPSensePlug(id(power_sensor1), "50:c7:bf:f6:2b:01", "plug1", 120.0);
+    ESPSensePlug plug2 = ESPSensePlug(id(power_sensor2), "50:c7:bf:f6:2b:02", "plug2", 120.0);
+    // Plug1 also measures voltage
+    plug1.voltage_sid = voltage_sensor1; // ID of voltage sensor
+    // Add to ESPSense
+    auto sense = new ESPSense();
+    return {sense};
+```
+
+
 
 Copyright 2020, Charles Powell
