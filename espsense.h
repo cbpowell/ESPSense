@@ -6,22 +6,56 @@
 
 #define RES_SIZE 400
 #define REQ_SIZE 70
+#define MAX_PLUG_COUNT 5  // Somewhat arbitrary as of now
 
 class ESPSensePlug {
 public:
   std::string name;
   std::string mac;
-  Sensor* power_id = NULL;
-  Sensor* voltage_id = NULL;
-  Sensor* current_id = NULL;
+  float voltage = 120.0;
+  Sensor *power_sid = NULL;
+  Sensor *voltage_sid = NULL;
+  Sensor *current_sid = NULL;
   
-  ESPSensePlug() {}
-  ESPSensePlug(std::string name, std::string mac, Sensor* pid, Sensor* vid = NULL, Sensor* cid = NULL) {
-    name = name;
-    mac = mac;
-    power_id = pid;
-    voltage_id = vid;
-    current_id = cid;
+  std::string base_json = "{\"emeter\": {\"get_realtime\":{ "
+                              "\"current\": %.02f, \"voltage\": %.02f, \"power\": %.02f, \"total\": 0, \"err_code\": 0}}, "
+                           "\"system\": {\"get_sysinfo\": "
+                              "{\"err_code\": 0, \"hw_ver\": 1.0, \"type\": \"IOT.SMARTPLUGSWITCH\", \"model\": \"HS110(US)\", "
+                           "\"mac\": \"%s\", \"deviceId\": \"%s\", \"alias\": \"%s\", \"relay_state\": 1, \"updating\": 0 }}}";
+  
+  
+  ESPSensePlug(Sensor *sid, std::string config_mac, std::string config_name, float config_voltage) {
+    power_sid = sid;
+    mac = config_mac;
+    name = config_name;
+    voltage = config_voltage;
+  }
+  
+  float get_power() {
+    float state;
+    if(power_sid && id(power_sid).has_state()) {
+      state = id(power_sid).state;
+    } else {
+      state = 0.0;
+    }
+    return state;
+  }
+  
+  float get_voltage() {
+    return voltage;
+  }
+  
+  float get_current() {
+    return get_power() / get_voltage();
+  }
+  
+  int generate_response(char *data) {
+    float power = get_power();
+    float voltage = get_voltage();
+    float current = get_current();
+    int response_len = snprintf(data, RES_SIZE, base_json.c_str(), current, voltage, power, mac.c_str(), mac.c_str(), name.c_str());
+    ESP_LOGD("ESPSense", "JSON out: %s", data);
+    return response_len;
   }
 };
 
@@ -29,22 +63,22 @@ class ESPSense : public Component {
 public:
   AsyncUDP udp;
   Sensor* sensor_id = NULL;
-  ESPSensePlug plugs[15]; // 15 max for now
+  
+  ESPSense() : Component() {}
   
   ESPSense(Sensor *sid, float conf_voltage = 120.0) : Component() {
-    voltage = conf_voltage;
-    sensor_id = sid;
-    name = App.get_name();
-    mac = get_mac_address_pretty();
+    // Generate single plug
+    std::string name = App.get_name();
+    std::string mac = get_mac_address_pretty();
     
-    auto plug = ESPSensePlug();
+    ESPSensePlug plug = ESPSensePlug(sid, mac, name, conf_voltage);
+    addPlug(plug);
   }
   
-  ESPSense(Sensor *sid, std::string config_mac, std::string config_alias, float conf_voltage = 120.0) : Component() {
-    voltage = conf_voltage;
-    sensor_id = sid;
-    name = config_alias;
-    mac = config_mac;
+  ESPSense(Sensor *sid, std::string mac, std::string alias, float voltage = 120.0) : Component() {
+    // Generate single plug
+    ESPSensePlug plug = ESPSensePlug(sid, mac, alias, voltage);
+    addPlug(plug);
   }
   
   void setup() override {
@@ -57,20 +91,21 @@ public:
     }
   }
   
+  void addPlug(ESPSensePlug plug) {
+    if(plug_count > (MAX_PLUG_COUNT - 1)) {
+      ESP_LOGW("ESPSense", "Attempted to add more than %ui plugs, ignoring", plug_count);
+    }
+    plugs.push_back(plug);
+    plug_count++;
+  }
+  
 private:
   float voltage;
   char response_buf[RES_SIZE];
+  std::vector<ESPSensePlug> plugs;
+  uint plug_count = 0;
   
   StaticJsonBuffer<200> jsonBuffer;
-  std::string name;
-  std::string mac;
-  
-  std::string base_json = "{\"emeter\": {\"get_realtime\":{ "
-                              "\"current\": %.02f, \"voltage\": %.02f, \"power\": %.02f, \"total\": 0, \"err_code\": 0}}, "
-                           "\"system\": {\"get_sysinfo\": "
-                              "{\"err_code\": 0, \"hw_ver\": 1.0, \"type\": \"IOT.SMARTPLUGSWITCH\", \"model\": \"HS110(US)\", "
-                           "\"mac\": \"%s\", \"deviceId\": \"%s\", \"alias\": \"%s\", \"relay_state\": 1, \"updating\": 0 }}}";
-  
   
   void start_sense_response() {
     udp.onPacket([&](AsyncUDPPacket &packet) {parse_packet(packet);});
@@ -107,17 +142,19 @@ private:
     JsonVariant request = req["emeter"]["get_realtime"];
     if (request.success()) {
       ESP_LOGD("ESPSense", "Power measurement requested");
-      // Generate JSON response string
-      int response_len = generate_response(response_buf);
-      // Encrypt
-      char encrypted[response_len];
-      encrypt(response_buf, response_len, encrypted);
-      // Respond to request
-      packet.write((uint8_t *)encrypted, response_len);
+      for(auto plug = begin(plugs); plug != end(plugs); ++plug) {
+        // Generate JSON response string
+        int response_len = plug->generate_response(response_buf);
+        // Encrypt
+        char encrypted[response_len];
+        encrypt(response_buf, response_len, encrypted);
+        // Respond to request
+        packet.write((uint8_t *)encrypted, response_len);
+      }
     }
   }
   
-  void decrypt(const uint8_t* data, size_t len, char* result) {
+  void decrypt(const uint8_t *data, size_t len, char* result) {
     uint8_t key = 171;
     uint8_t a;
     for (int i = 0; i < len; i++) {
@@ -128,7 +165,7 @@ private:
     }
   }
   
-  void encrypt(const char* data, size_t len, char* result) {
+  void encrypt(const char *data, size_t len, char* result) {
     uint8_t key = 171;
     uint8_t a;
     for (int i = 0; i < len; i++) {
@@ -137,28 +174,5 @@ private:
       key = a;
       result[i] = a;
     }
-  }
-  
-  float get_power() {
-    float state;
-    if(sensor_id && id(sensor_id).has_state()) {
-      state = id(sensor_id).state;
-    } else {
-      state = 0.0;
-    }
-    return state;
-  }
-  
-  float get_voltage() {
-    return voltage;
-  }
-  
-  int generate_response(char* data) {
-    float power = get_power();
-    float voltage = get_voltage();
-    float current = power / voltage;
-    int response_len = snprintf(data, RES_SIZE, base_json.c_str(), current, voltage, power, mac.c_str(), mac.c_str(), name.c_str());
-    ESP_LOGD("ESPSense", "JSON out: %s", data);
-    return response_len;
   }
 };
