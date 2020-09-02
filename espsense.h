@@ -32,21 +32,23 @@ public:
   }
   
   float get_power() {
-    float state;
-    if(power_sid && id(power_sid).has_state()) {
-      state = id(power_sid).state;
-    } else {
-      state = 0.0;
-    }
-    return state;
+    return get_sensor_reading(power_sid, 0.0);
   }
   
   float get_voltage() {
-    return voltage;
+    return get_sensor_reading(voltage_sid, voltage);
   }
   
   float get_current() {
-    return get_power() / get_voltage();
+    return get_sensor_reading(current_sid, get_power() / get_voltage());
+  }
+  
+  float get_sensor_reading(Sensor *sid, float default_value) {
+    if(sid != NULL && id(sid).has_state()) {
+      return id(sid).state;
+    } else {
+      return default_value;
+    }
   }
   
   int generate_response(char *data) {
