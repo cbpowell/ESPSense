@@ -62,6 +62,8 @@ custom_component:
     plug1.voltage_sid = voltage_sensor1; // ID of voltage sensor
     // Add to ESPSense
     auto sense = new ESPSense();
+    sense->addPlug(plug1);
+    sense->addPlug(plug2);
     return {sense};
 ```
 
