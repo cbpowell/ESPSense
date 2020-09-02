@@ -48,7 +48,7 @@ Note that whatever sensor you tell ESPSense to monitor is assumed to report a **
 
 By default, the MAC address of your ESP device will be reported to Sense. You can configure that manually if desired. See the `espsense.h` file for the alternate constructor methods.
 
-# Advanced Usage
+## Advanced Usage
 If you're using a device that measures power/voltage/current of more than one thing, ESPSense also supports reporting back multiple "plugs" to Sense. In the custom component lambda, you can configure each plug and add it to the ESPSense component. The plug `voltage_sid` and `current_sid` sensor ID values are optional, and ESPSense will fall back to using the specified static voltage and calculating current from power / voltage, respectively, if not specified.
 ```yaml
 custom_component:
@@ -66,7 +66,7 @@ custom_component:
     sense->addPlug(plug2);
     return {sense};
 ```
-
+Sense does not currently care about plug voltage or current readings, but this is implemented to support data collection by things other than Sense, or in case Sense does eventually implement it!
 
 
 Copyright 2020, Charles Powell
