@@ -89,6 +89,8 @@ public:
     addPlug(plug);
   }
   
+  float get_setup_priority() const override { return esphome::setup_priority::AFTER_WIFI; }
+  
   void setup() override {
     if(udp.listen(9999)) {
       ESP_LOGI("ESPSense","Listening on port 9999");
