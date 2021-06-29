@@ -97,7 +97,7 @@ public:
       // Parse incoming packets
       start_sense_response();
     } else {
-      ESP_LOGE("ESPSense", "Failed to start UDP listen!");
+      ESP_LOGE("ESPSense", "Failed to start UDP listener!");
     }
   }
   
@@ -118,7 +118,10 @@ private:
   StaticJsonBuffer<200> jsonBuffer;
   
   void start_sense_response() {
-    udp.onPacket([&](AsyncUDPPacket &packet) {parse_packet(packet);});
+    ESP_LOGI("ESPSense","Starting ESPSense listener");
+    udp.onPacket([&](AsyncUDPPacket &packet) {
+      parse_packet(packet);
+    });
   }
   
   void parse_packet(AsyncUDPPacket &packet) {
@@ -152,7 +155,7 @@ private:
     JsonVariant request = req["emeter"]["get_realtime"];
     if (request.success()) {
       ESP_LOGD("ESPSense", "Power measurement requested");
-      for(auto plug = begin(plugs); plug != end(plugs); ++plug) {
+      for (auto plug = begin(plugs); plug != end(plugs); ++plug) {
         // Generate JSON response string
         int response_len = plug->generate_response(response_buf);
         // Encrypt
