@@ -1,8 +1,14 @@
 // Copyright 2020, Charles Powell
 
 #include "esphome.h"
-#include "ESPAsyncUDP.h"
 #include "ArduinoJson.h"
+
+#ifdef ARDUINO_ARCH_ESP32
+#include "AsyncUDP.h"
+#endif
+#ifdef ARDUINO_ARCH_ESP8266
+#include "ESPAsyncUDP.h"
+#endif
 
 #define RES_SIZE 400
 #define REQ_SIZE 70
