@@ -18,6 +18,7 @@ class ESPSensePlug {
 public:
   std::string name;
   std::string mac;
+  bool encrypt = true;
   float voltage = 120.0;
   Sensor *power_sid = NULL;
   Sensor *voltage_sid = NULL;
@@ -158,11 +159,16 @@ private:
       for (auto plug = begin(plugs); plug != end(plugs); ++plug) {
         // Generate JSON response string
         int response_len = plug->generate_response(response_buf);
-        // Encrypt
-        char encrypted[response_len];
-        encrypt(response_buf, response_len, encrypted);
-        // Respond to request
-        packet.write((uint8_t *)encrypted, response_len);
+        char response[response_len];
+        if (plug->encrypt) {
+          // Encrypt
+          encrypt(response_buf, response_len, response);
+          // Respond to request
+          packet.write((uint8_t *)response, response_len);
+        } else {
+          // Response to request
+          packet.write((uint8_t *)response_buf, response_len);
+        }
       }
     }
   }
