@@ -11,7 +11,12 @@ One of the more useful cases is flashing other (commercial) energy-monitoring sm
 The focus on the wiki is for plugs that are re-flashable "over the air" for simplicity, but if you're comfortable with soldering (and opening the plug) there are  an incredible number of compatible plugs/devices compatible with ESPHome.
 
 # Usage
-Place the `espsense.h` [custom component](https://esphome.io/custom/custom_component.html) in your ESPHome build directory, and add the `custom_component` details and lambda to your YAML as per the ESPHome directions - from the included example YAML file:
+Place the `espsense.h` [custom component](https://esphome.io/custom/custom_component.html) in your ESPHome build directory, and then modify/create your ESPHome YAML definition to include:
+1. the `custom_component` details and lambda, to tell ESPSense which ESPHome sensor to utilize for power data (note: this can also be a [template sensor](https://esphome.io/components/sensor/template.html) that returns a wattage value!)
+2. an `includes:` directive, calling out the `espsense.h` file
+3. a `libraries:` directive, that specifies to include the libraries `ArduinoJson-esphome@5.13.3` and `ESPAsyncUDP` for ESP8266-based devices. **Note**: for ESP32-based devices do *not* include `ESPAsyncUDP`, the core library `AsyncUDP` is utilized instead.
+
+rom the included example YAML file:
 
 ```yaml
 esphome:
@@ -24,7 +29,7 @@ esphome:
   # - ESPAsyncUDP, to handle UDP communication
   # - ArduinoJson-esphomelib, which might already be included if using the ESPHome webserver
   libraries:
-    - "ESPAsyncUDP"
+    - "ESPAsyncUDP"   # do not include if using an ESP32 board or device!
     - "ArduinoJson-esphomelib@5.13.3"
     
 
