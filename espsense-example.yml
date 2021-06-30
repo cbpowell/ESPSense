@@ -12,13 +12,14 @@ esphome:
     
 
 wifi:
-  ssid: "your_wifi"
-  password: "your_wifi_password"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_pass
+  fast_connect: on
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "Fallback Hotspot"
-    password: "fallback_password"
+    ssid: "${plug_name} Fallback Hotspot"
+    password: !secret ap_pass
 
 captive_portal:
   
