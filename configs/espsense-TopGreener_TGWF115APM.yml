@@ -9,7 +9,7 @@ substitutions:
   
   # Base calibration to 90W lightbulb, Kill-a-Watt between plug and wall
   # Detail calibration can be done with calibrate_linear sensor filters below
-  current_res: "0.00228"
+  current_res: "0.00212"
   voltage_div: "2120"
   # Increasing current_res reduces reported wattage
   # Increasing voltage_div increases reported voltage
@@ -121,11 +121,6 @@ sensor:
       name: "${plug_name} Wattage"
       unit_of_measurement: W
       filters:
-        # Moving average filter to try and reduce a periodic drop of ~1-2W
-        # Unsure of cause, may be a better solution!
-        - sliding_window_moving_average:
-            window_size: 2
-            send_every: 1
         # - calibrate_linear:
         #   # Map X (from sensor) to Y (true value)
         #   # At least 2 data points required
