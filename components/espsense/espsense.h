@@ -38,13 +38,6 @@ class ESPSensePlug {
 
   ESPSensePlug() {}
 
-  ESPSensePlug(sensor::Sensor *sid, std::string config_mac, std::string config_name, float config_voltage) {
-    power_sid = sid;
-    mac = config_mac;
-    name = config_name;
-    voltage = config_voltage;
-  }
-
   void set_name(std::string name) { 
     this->name = name;
 
