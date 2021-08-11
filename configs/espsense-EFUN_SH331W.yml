@@ -18,12 +18,6 @@ esphome:
   name: ${plug_name}
   platform: ESP8266
   board: esp01_1m
-  includes:
-    - espsense.h
-  # Uses the ESPAsyncUDP library
-  libraries:
-    - "ESPAsyncUDP"
-    - "ArduinoJson-esphomelib@5.13.3"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -149,7 +143,12 @@ sensor:
   - platform: uptime
     name: ${plug_name} Uptime Sensor
     
-custom_component:
-- lambda: |-
-    auto sensor_power = new ESPSense(id(wattage), 120);
-    return {sensor_power};
+external_components:
+  - source: github://cbpowell/ESPSense
+    components: [ espsense ]
+
+espsense:
+  plugs:
+    - name: ${plug_name}
+      power_sensor: wattage
+      voltage: 120.0

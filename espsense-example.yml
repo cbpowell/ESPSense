@@ -2,13 +2,6 @@ esphome:
   name: espsense
   platform: ESP8266
   board: nodemcu
-  # Include espsense.h custom component file
-  includes:
-    - espsense.h
-  # Uses the ESPAsyncUDP library
-  libraries:
-    - "ESPAsyncUDP"
-    - "ArduinoJson-esphomelib@5.13.3"
     
 
 wifi:
@@ -51,11 +44,25 @@ time:
               - lambda: !lambda |-
                   long randomPowerState = random(5, 15);
                   id(test_sensor).publish_state((float)randomPowerState);
-  
-custom_component:
-  # Create a new ESPSense component with the ID of ESPHome power sensor
-  # Sensor can be a template that calculates (or reports) power from a *different*
-  # sensor or switch as well!
-- lambda: |-
-    auto sensor_power = new ESPSense(id(test_sensor), 120);
-    return {sensor_power};
+
+
+external_components:
+  # Pull the esphome component in from this GitHub repo
+  # - source: github://cbpowell/ESPSense
+  - source:
+      type: local
+      path: components 
+    components: [ espsense ]
+
+espsense:
+  # You can define up to 10 "plugs" to report to Sense
+  # Power value can come from any of the following:
+  #   * A power sensor (in Watts)
+  #   * Calculated from a current sensor (in Amps) and a voltage sensor (in Volts)
+  #   * Calculated from a current sensor (in Amps) and a fixed voltage value
+  plugs:
+    - name: espsense
+      power_sensor: test_sensor
+      # current_sensor: some_current_sensor
+      # voltage_sensor: some_voltage_sensor
+      # voltage: 120.0
