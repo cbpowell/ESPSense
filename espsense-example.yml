@@ -48,10 +48,7 @@ time:
 
 external_components:
   # Pull the esphome component in from this GitHub repo
-  # - source: github://cbpowell/ESPSense
-  - source:
-      type: local
-      path: components 
+  - source: github://cbpowell/ESPSense
     components: [ espsense ]
 
 espsense:
@@ -66,3 +63,5 @@ espsense:
       # current_sensor: some_current_sensor
       # voltage_sensor: some_voltage_sensor
       # voltage: 120.0
+      # encrypt: false
+      # mac_address: 35:4B:91:A1:FE:CC
