@@ -20,10 +20,7 @@ From the included example YAML file:
 ```yaml
 external_components:
   # Pull the esphome component in from this GitHub repo
-  # - source: github://cbpowell/ESPSense
-  - source:
-      type: local
-      path: components 
+  - source: github://cbpowell/ESPSense
     components: [ espsense ]
 
 # Template sensor as an example
