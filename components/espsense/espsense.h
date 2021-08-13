@@ -1,10 +1,11 @@
 // Copyright 2020, Charles Powell
 
-#include "esphome/core/application.h"
-#include "esphome/core/component.h"
-#include "esphome/core/log.h"
 #include "esphome/components/json/json_util.h"
 #include "esphome/components/sensor/sensor.h"
+#include "esphome/core/application.h"
+#include "esphome/core/component.h"
+#include "esphome/core/helpers.h"
+#include "esphome/core/log.h"
 
 #ifdef ARDUINO_ARCH_ESP32
 #include "AsyncUDP.h"
@@ -38,17 +39,7 @@ class ESPSensePlug {
 
   ESPSensePlug() {}
 
-  void set_name(std::string name) { 
-    this->name = name;
-
-    // Generate a fake MAC address from the name to prevent issues when there are multiple "plugs" with the same MAC address
-    uint32_t name_hash = fnv1_hash(name);
-    uint8_t *hash_pointer = (uint8_t *)&name_hash;
-    char mac[20];
-    sprintf(mac, "%02X:%02X:%02X:%02X:%02X:%02X", 53, 75, hash_pointer[0], hash_pointer[1], hash_pointer[3], hash_pointer[4]);
-    this->set_mac_address(mac);
-  }
-  
+  void set_name(std::string name) { this->name = name; }
   void set_mac_address(std::string mac) { this->mac = mac; }
   void set_encrypt(bool encrypt) { this->encrypt = encrypt; }
   void set_voltage(float voltage) { this->voltage = voltage; }
@@ -105,18 +96,33 @@ public:
   }
 
   void addPlug(ESPSensePlug *plug) {
-    if(plug_count > (MAX_PLUG_COUNT - 1)) {
-      ESP_LOGW("ESPSense", "Attempted to add more than %ui plugs, ignoring", plug_count);
+    if (plugs.size() >= MAX_PLUG_COUNT) {
+      ESP_LOGW("ESPSense", "Attempted to add more than %ui plugs, ignoring", MAX_PLUG_COUNT);
     }
+
+    if (plug->mac.empty())
+    {
+      if (plugs.size() == 0)
+      {
+        // First plug to be added, and no MAC set, so default to own hardware MAC
+        plug->set_mac_address(get_mac_address_pretty());
+      } else {
+        // Generate a fake MAC address from the name to prevent issues when there are multiple plugs with the same MAC address
+        uint32_t name_hash = fnv1_hash(plug->name);
+        uint8_t *hash_pointer = (uint8_t *)&name_hash;
+        char mac[20];
+        sprintf(mac, "%02X:%02X:%02X:%02X:%02X:%02X", 53, 75, hash_pointer[0], hash_pointer[1], hash_pointer[3], hash_pointer[4]);
+        plug->set_mac_address(mac);
+      }
+    }
+
     plugs.push_back(plug);
-    plug_count++;
   }
   
 private:
   float voltage;
   char response_buf[RES_SIZE];
   std::vector<ESPSensePlug *> plugs;
-  uint plug_count = 0;
   
   StaticJsonBuffer<200> jsonBuffer;
   
