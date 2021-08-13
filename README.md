@@ -13,7 +13,7 @@ The focus on the wiki is for plugs that are re-flashable "over the air" for simp
 # Usage
 Modify/create your ESPHome YAML definition to include:
 1. an `external_component` directive, that specifies this component
-2. the `espsense` details, to tell ESPSense which ESPHome sensor(s) to utilize for power data (note: this can also be a [template sensor](https://esphome.io/components/sensor/template.html) that returns a wattage value!)
+2. a top level `espsense` directive, to configure the ESPSense component by specifying which ESPHome sensor(s) to utilize for power data for each plug (note: these can also be [template sensors](https://esphome.io/components/sensor/template.html) that return a wattage value!)
 
 From the included example YAML file:
 
