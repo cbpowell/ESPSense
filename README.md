@@ -11,27 +11,17 @@ One of the more useful cases is flashing other (commercial) energy-monitoring sm
 The focus on the wiki is for plugs that are re-flashable "over the air" for simplicity, but if you're comfortable with soldering (and opening the plug) there are  an incredible number of compatible plugs/devices compatible with ESPHome.
 
 # Usage
-Place the `espsense.h` [custom component](https://esphome.io/custom/custom_component.html) in your ESPHome build directory, and then modify/create your ESPHome YAML definition to include:
-1. the `custom_component` details and lambda, to tell ESPSense which ESPHome sensor to utilize for power data (note: this can also be a [template sensor](https://esphome.io/components/sensor/template.html) that returns a wattage value!)
-2. an `includes:` directive, calling out the `espsense.h` file
-3. a `libraries:` directive, that specifies to include the libraries `ArduinoJson-esphome@5.13.3` and `ESPAsyncUDP` for ESP8266-based devices. **Note**: for ESP32-based devices do *not* include `ESPAsyncUDP`, the core library `AsyncUDP` is utilized instead.
+Modify/create your ESPHome YAML definition to include:
+1. an `external_component` directive, that specifies this component
+2. a top level `espsense` directive, to configure the ESPSense component by specifying which ESPHome sensor(s) to utilize for power data for each plug (note: these can also be [template sensors](https://esphome.io/components/sensor/template.html) that return a wattage value!)
 
-rom the included example YAML file:
+From the included example YAML file:
 
 ```yaml
-esphome:
-  name: espsense
-  ...
-  # Include espsense.h custom component file
-  includes:
-    - espsense.h
-  # Uses the libraries:
-  # - ESPAsyncUDP, to handle UDP communication
-  # - ArduinoJson-esphomelib, which might already be included if using the ESPHome webserver
-  libraries:
-    - "ESPAsyncUDP"   # do not include if using an ESP32 board or device!
-    - "ArduinoJson-esphomelib@5.13.3"
-    
+external_components:
+  # Pull the esphome component in from this GitHub repo
+  - source: github://cbpowell/ESPSense
+    components: [ espsense ]
 
 # Template sensor as an example
 sensor:
@@ -40,37 +30,26 @@ sensor:
     id: test_sensor
     unit_of_measurement: W
   
-custom_component:
-  # Create ESPSense instance, passing the ID of the sensor it should retrieve
-  # power data from
-- lambda: |-
-    float voltage = 120.0;
-    auto sensor_power = new ESPSense(id(test_sensor), voltage);
-    return {sensor_power};
+espsense:
+  # You can define up to 10 "plugs" to report to Sense
+  # Power value can come from any of the following:
+  #   * A power sensor (in Watts)
+  #   * Calculated from a current sensor (in Amps) and a voltage sensor (in Volts)
+  #   * Calculated from a current sensor (in Amps) and a fixed voltage value
+  plugs:
+    - name: espsense
+      power_sensor: test_sensor
+      # current_sensor: some_current_sensor
+      # voltage_sensor: some_voltage_sensor
+      # voltage: 120.0
+      # encrypt: false
+      # mac_address: 35:4B:91:A1:FE:CC
 ```
 
 Note that whatever sensor you tell ESPSense to monitor is assumed to report a **state in the units of watts!** If you want to report the power usage of a device indirectly (such as scaled on another parameter, or simply if on or off), you'll need to create a template sensor in ESPHome to calculate/report the wattage.
 
-By default, the MAC address of your ESP device will be reported to Sense. You can configure that manually if desired. See the `espsense.h` file for the alternate constructor methods.
+By default, a MAC address generated from a hash of the plug name will be reported to Sense. You can configure that manually if desired.
 
-## Advanced Usage
-If you're using a device that measures power/voltage/current of more than one thing, ESPSense also supports reporting back multiple "plugs" to Sense. In the custom component lambda, you can configure each plug and add it to the ESPSense component. The plug `voltage_sid` and `current_sid` sensor ID values are optional, and ESPSense will fall back to using the specified static voltage and calculating current from power / voltage, respectively, if not specified.
-```yaml
-custom_component:
-  # Create ESPSense instance, passing the ID of the sensor it should retrieve
-  # power data from
-- lambda: |-
-    // Define "plugs"
-    ESPSensePlug plug1 = ESPSensePlug(id(power_sensor1), "50:c7:bf:f6:2b:01", "plug1", 120.0);
-    ESPSensePlug plug2 = ESPSensePlug(id(power_sensor2), "50:c7:bf:f6:2b:02", "plug2", 120.0);
-    // Plug1 also measures voltage
-    plug1.voltage_sid = voltage_sensor1; // ID of voltage sensor
-    // Add to ESPSense
-    auto sense = new ESPSense();
-    sense->addPlug(plug1);
-    sense->addPlug(plug2);
-    return {sense};
-```
 Sense does not currently care about plug voltage or current readings, but this is implemented to support data collection by things other than Sense, or in case Sense does eventually implement it!
 
 
