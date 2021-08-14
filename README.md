@@ -45,16 +45,16 @@ espsense:
       # encrypt: false
       # mac_address: 35:4B:91:A1:FE:CC
 ```
-## Power Sensor
+### Power Sensor
 Note that whatever sensor you tell ESPSense to monitor is assumed to report a **state in the units of watts!** If you want to report the power usage of a device indirectly (such as scaled on another parameter, or simply if on or off), you'll need to create a template sensor in ESPHome to calculate/report the wattage.
 
-## MAC Address
+### MAC Address
 By default, the first plug defined will use the hardware MAC address of your device, if no MAC is explicitly configured. If additional plugs are defined (on the same hardware device) and no specific MAC is configured for those, a MAC address will be automatically generated for each from a hash of the provided plug name.
 
-## Voltage and Current
+### Voltage and Current
 Sense does not currently care about plug voltage or current readings, but this is implemented to support data collection by things other than Sense, or in case Sense does eventually implement it!
 
-## Encryption
+### Encryption
 TP-Link plugs use a light "encryption" of the transmitted data, and the Sense monitor does expect to receive the data in encrypted form, so generally you will want to leave the `encrypt` setting as default (true). However you can specify to disable encryption if desired, which could be utilize for your own custom data collection approaches.
 
 
