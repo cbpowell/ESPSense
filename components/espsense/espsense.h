@@ -111,7 +111,7 @@ public:
         uint32_t name_hash = fnv1_hash(plug->name);
         uint8_t *hash_pointer = (uint8_t *)&name_hash;
         char mac[20];
-        sprintf(mac, "%02X:%02X:%02X:%02X:%02X:%02X", 53, 75, hash_pointer[0], hash_pointer[1], hash_pointer[3], hash_pointer[4]);
+        sprintf(mac, "%02X:%02X:%02X:%02X:%02X:%02X", 53, 75, hash_pointer[0], hash_pointer[1], hash_pointer[2], hash_pointer[3]);
         plug->set_mac_address(mac);
       }
     }
