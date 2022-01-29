@@ -1,4 +1,4 @@
-// Copyright 2020, Charles Powell
+// Copyright 2022, Charles Powell
 
 #include "esphome/components/json/json_util.h"
 #include "esphome/components/sensor/sensor.h"
@@ -6,6 +6,7 @@
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
+#include "esphome/core/version.h"
 
 #ifdef ARDUINO_ARCH_ESP32
 #include "AsyncUDP.h"
@@ -123,8 +124,12 @@ private:
   float voltage;
   char response_buf[RES_SIZE];
   std::vector<ESPSensePlug *> plugs;
-  
+
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2022, 1, 0)
+  StaticJsonDocument<200> jsonBuffer;
+#else
   StaticJsonBuffer<200> jsonBuffer;
+#endif
   
   void start_sense_response() {
     ESP_LOGI("ESPSense","Starting ESPSense listener");
@@ -154,15 +159,28 @@ private:
     ESP_LOGD("ESPSense", "Got message: %s", request_buf);
     
     // Parse JSON
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2022, 1, 0)
+    // ArduinoJson 6
+    auto jsonError = deserializeJson(jsonBuffer, request_buf);
+    if(jsonError) {
+      ESP_LOGW("ESPSense", "JSON parse failed!");
+      return;
+    }
+    
+    // Check if this is a valid request by looking for emeter key
+    const char* request = jsonBuffer["emeter"]["get_realtime"];
+    if (request) {
+#else
+    // ArduinoJson 5
     jsonBuffer.clear();
     JsonObject &req = jsonBuffer.parseObject(request_buf);
     if(!req.success()) {
       ESP_LOGW("ESPSense", "JSON parse failed!");
+      return;
     }
-    
-    // Check if this is a valid request by looking for emeter key
     JsonVariant request = req["emeter"]["get_realtime"];
     if (request.success()) {
+#endif
       ESP_LOGD("ESPSense", "Power measurement requested");
       for (auto *plug : this->plugs) {
         // Generate JSON response string
