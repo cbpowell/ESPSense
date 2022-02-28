@@ -125,9 +125,7 @@ private:
   char response_buf[RES_SIZE];
   std::vector<ESPSensePlug *> plugs;
 
-#if ESPHOME_VERSION_CODE >= VERSION_CODE(2022, 1, 0)
-  StaticJsonDocument<200> jsonBuffer;
-#else
+#if ESPHOME_VERSION_CODE < VERSION_CODE(2022, 1, 0) 
   StaticJsonBuffer<200> jsonBuffer;
 #endif
   
@@ -155,21 +153,24 @@ private:
     // Add null terminator
     request_buf[packet.length()] = '\0';
     
-    // Print into null-terminated string
-    ESP_LOGD("ESPSense", "Got message: %s", request_buf);
+    // Print into null-terminated string if verbose debugging
+    ESP_LOGV("ESPSense", "Message: %s", request_buf);
     
     // Parse JSON
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2022, 1, 0)
     // ArduinoJson 6
-    auto jsonError = deserializeJson(jsonBuffer, request_buf);
+    StaticJsonDocument<200> jsonDoc, emeterDoc;
+    auto jsonError = deserializeJson(jsonDoc, request_buf);
     if(jsonError) {
-      ESP_LOGW("ESPSense", "JSON parse failed!");
+      ESP_LOGW("ESPSense", "JSON parse failed! Error: %s", jsonError.c_str());
       return;
     }
+    ESP_LOGD("ESPSense", "Parse of message JSON successful");
     
     // Check if this is a valid request by looking for emeter key
-    const char* request = jsonBuffer["emeter"]["get_realtime"];
-    if (request) {
+    if (!jsonDoc["emeter"]["get_realtime"]) {
+      ESP_LOGD("ESPSense", "Message was not deserialized as a request for power measurement");
+    } else {
 #else
     // ArduinoJson 5
     jsonBuffer.clear();
@@ -178,8 +179,13 @@ private:
       ESP_LOGW("ESPSense", "JSON parse failed!");
       return;
     }
+    ESP_LOGD("ESPSense", "Parse of message JSON successful");
+    
+    // Check if this is a valid request by looking for emeter key
     JsonVariant request = req["emeter"]["get_realtime"];
-    if (request.success()) {
+    if (!request.success()) {
+      ESP_LOGD("ESPSense", "Message not a request for power measurement");
+    } else {
 #endif
       ESP_LOGD("ESPSense", "Power measurement requested");
       for (auto *plug : this->plugs) {
