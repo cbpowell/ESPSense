@@ -193,12 +193,7 @@ public:
       if (plugs.size() == 0)
       {
         // First plug to be added, and no MAC set, so default to own hardware MAC
-        uint8_t mac_bytes[6];
-        get_mac_address_raw(mac_bytes);
-        char mac[sizeof("FF:FF:FF:FF:FF:FF")];
-        std::snprintf(mac, sizeof(mac), "%02X:%02X:%02X:%02X:%02X:%02X",
-                      mac_bytes[0], mac_bytes[1], mac_bytes[2], mac_bytes[3], mac_bytes[4], mac_bytes[5]);
-        plug->set_mac_address(mac);
+        plug->set_mac_address(get_mac_address_pretty());
       } else {
         // Generate a fake MAC address from the name to prevent issues when there are multiple plugs with the same MAC address
         uint32_t name_hash = fnv1_hash(plug->name);
