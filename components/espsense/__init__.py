@@ -54,11 +54,6 @@ CONFIG_SCHEMA = (
 )
 
 async def to_code(config):
-    if CORE.is_esp8266:
-        cg.add_library("ESPAsyncUDP", "")
-    elif CORE.is_esp32:
-        cg.add_library("ESP32 Async UDP", None)
-
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 

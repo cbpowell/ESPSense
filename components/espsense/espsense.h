@@ -2,18 +2,16 @@
 
 #include "esphome/components/json/json_util.h"
 #include "esphome/components/sensor/sensor.h"
+#include "esphome/components/socket/socket.h"
+#include "esphome/components/socket/headers.h"
 #include "esphome/core/application.h"
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "esphome/core/version.h"
-
-#ifdef ARDUINO_ARCH_ESP32
-#include "AsyncUDP.h"
-#endif
-#ifdef ARDUINO_ARCH_ESP8266
-#include "ESPAsyncUDP.h"
-#endif
+#include <memory>
+#include <cstring>
+#include <cstdio>
 
 namespace esphome {
 namespace espsense {
@@ -80,20 +78,109 @@ class ESPSensePlug {
 
 class ESPSense : public Component {
 public:
-  AsyncUDP udp;
-  
   ESPSense() : Component() {}
   
   float get_setup_priority() const override { return esphome::setup_priority::AFTER_WIFI; }
   
   void setup() override {
-    if(udp.listen(9999)) {
-      ESP_LOGI("ESPSense","Listening on port 9999");
-      // Parse incoming packets
-      start_sense_response();
-    } else {
-      ESP_LOGE("ESPSense", "Failed to start UDP listener!");
+    this->socket_ = socket::socket_ip(SOCK_DGRAM, IPPROTO_IP);
+    if (this->socket_ == nullptr) {
+      ESP_LOGE("ESPSense", "Could not create socket");
+      this->mark_failed();
+      return;
     }
+
+    int enable = 1;
+    int err = this->socket_->setsockopt(SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+    if (err != 0) {
+      ESP_LOGW("ESPSense", "Socket unable to set reuseaddr: errno %d", err);
+      // we can still continue
+    }
+    
+    err = this->socket_->setblocking(false);
+    if (err != 0) {
+      ESP_LOGW("ESPSense", "Socket unable to set nonblocking mode: errno %d", err);
+      this->mark_failed();
+      return;
+    }
+
+    struct sockaddr_storage server;
+    socklen_t sl = socket::set_sockaddr_any((struct sockaddr *) &server, sizeof(server), 9999);
+    if (sl == 0) {
+      ESP_LOGE("ESPSense", "Socket unable to set sockaddr: errno %d", errno);
+      this->mark_failed();
+      return;
+    }
+
+    err = this->socket_->bind((struct sockaddr *) &server, sizeof(server));
+    if (err != 0) {
+      ESP_LOGE("ESPSense", "Socket unable to bind: errno %d", errno);
+      this->mark_failed();
+      return;
+    }
+
+    ESP_LOGI("ESPSense","Listening on port 9999");
+  }
+
+  void loop() override {
+    if (this->socket_ == nullptr) {
+      return;
+    }
+
+    uint8_t buf[REQ_SIZE];
+    struct sockaddr_storage remote_addr;
+    socklen_t remote_addr_len = sizeof(remote_addr);
+
+#ifdef USE_SOCKET_IMPL_BSD_SOCKETS
+    ssize_t len = this->socket_->recvfrom(buf, sizeof(buf), (struct sockaddr *)&remote_addr, &remote_addr_len);
+#else
+    // Fallback to read() if recvfrom is not available
+    ssize_t len = this->socket_->read(buf, sizeof(buf));
+    remote_addr_len = 0;
+#endif
+
+    if (len == -1) {
+      // No packet available or error (non-blocking socket)
+      return;
+    }
+
+    if (len > REQ_SIZE) {
+      ESP_LOGD("ESPSense", "Packet is oversized, ignoring");
+      return;
+    }
+
+    // Get remote IP address for logging (compatible with both Arduino and ESP-IDF)
+    char remote_ip_str[46] = "unknown";
+    if (remote_addr_len > 0 && remote_addr.ss_family == AF_INET) {
+      struct sockaddr_in *addr_in = (struct sockaddr_in *)&remote_addr;
+      // Access IP address bytes directly - works with both lwIP and BSD sockets
+      uint8_t *ip_bytes = (uint8_t *)&addr_in->sin_addr;
+      #ifdef USE_SOCKET_IMPL_LWIP_TCP
+        // lwIP structure - access bytes directly
+        snprintf(remote_ip_str, sizeof(remote_ip_str), "%d.%d.%d.%d",
+                 ip_bytes[0], ip_bytes[1], ip_bytes[2], ip_bytes[3]);
+      #else
+        // BSD sockets - sin_addr.s_addr is uint32_t in network byte order
+        uint32_t ip_addr;
+        #ifdef USE_SOCKET_IMPL_BSD_SOCKETS
+          ip_addr = addr_in->sin_addr.s_addr;
+          // ntohl should be available via socket headers
+          ip_addr = ntohl(ip_addr);
+        #else
+          // Fallback: access as bytes
+          memcpy(&ip_addr, &addr_in->sin_addr.s_addr, sizeof(uint32_t));
+          // Manual byte swap for network to host
+          ip_addr = ((ip_addr & 0xFF000000) >> 24) | ((ip_addr & 0x00FF0000) >> 8) |
+                    ((ip_addr & 0x0000FF00) << 8) | ((ip_addr & 0x000000FF) << 24);
+        #endif
+        snprintf(remote_ip_str, sizeof(remote_ip_str), "%d.%d.%d.%d",
+                 (ip_addr >> 24) & 0xFF, (ip_addr >> 16) & 0xFF, 
+                 (ip_addr >> 8) & 0xFF, ip_addr & 0xFF);
+      #endif
+    }
+
+    ESP_LOGD("ESPSense", "Got packet from %s", remote_ip_str);
+    parse_packet(buf, len, &remote_addr, remote_addr_len);
   }
 
   void addPlug(ESPSensePlug *plug) {
@@ -124,22 +211,14 @@ private:
   float voltage;
   char response_buf[RES_SIZE];
   std::vector<ESPSensePlug *> plugs;
+  std::unique_ptr<socket::Socket> socket_;
 
 #if ESPHOME_VERSION_CODE < VERSION_CODE(2022, 1, 0) 
   StaticJsonBuffer<200> jsonBuffer;
 #endif
   
-  void start_sense_response() {
-    ESP_LOGI("ESPSense","Starting ESPSense listener");
-    udp.onPacket([&](AsyncUDPPacket &packet) {
-      parse_packet(packet);
-    });
-  }
-  
-  void parse_packet(AsyncUDPPacket &packet) {
-    ESP_LOGD("ESPSense", "Got packet from %s", packet.remoteIP().toString().c_str());
-    
-    if(packet.length() > REQ_SIZE) {
+  void parse_packet(const uint8_t *data, size_t len, struct sockaddr_storage *remote_addr, socklen_t remote_addr_len) {
+    if(len > REQ_SIZE) {
       // Not a Sense request packet
       ESP_LOGD("ESPSense", "Packet is oversized, ignoring");
       return;
@@ -148,10 +227,10 @@ private:
     char request_buf[REQ_SIZE];
     
     // Decrypt
-    decrypt(packet.data(), packet.length(), request_buf);
+    decrypt(data, len, request_buf);
     
     // Add null terminator
-    request_buf[packet.length()] = '\0';
+    request_buf[len] = '\0';
     
     // Print into null-terminated string if verbose debugging
     ESP_LOGV("ESPSense", "Message: %s", request_buf);
@@ -196,10 +275,12 @@ private:
           // Encrypt
           encrypt(response_buf, response_len, response);
           // Respond to request
-          packet.write((uint8_t *)response, response_len);
+          this->socket_->sendto((uint8_t *)response, response_len, 0, 
+                                (struct sockaddr *)remote_addr, remote_addr_len);
         } else {
           // Response to request
-          packet.write((uint8_t *)response_buf, response_len);
+          this->socket_->sendto((uint8_t *)response_buf, response_len, 0,
+                                (struct sockaddr *)remote_addr, remote_addr_len);
         }
       }
     }
